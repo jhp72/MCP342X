@@ -3,7 +3,7 @@
  * mcp3428.c
  *
  *  Created on: 2023.04.01.
- *      Author: jhpark (jay@nxtcorp.co.kr)
+ *      Author: jaehong park (jaehong1972@gmail.com)
  */
 
 #include PLATFORM_HEADER
