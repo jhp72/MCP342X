@@ -3,7 +3,7 @@
  * mcp3428.h
  *
  *  Created on: 2023.04.01.
- *      Author: jhpark (jay@nxtcorp.co.kr)
+ *      Author: jaehong park (jaehong1972@gmail.com)
  */
 
 #ifndef __MCP3428_H__
