@@ -3,7 +3,7 @@
  * mcp3428.h
  *
  *  Created on: 2023.04.01.
- *      Author: jaehong park (jaehong1972@gmail.com)
+ *      Author: jaehong park (cto.osfactory@gmail.com)
  */
 
 #ifndef __MCP3428_H__
