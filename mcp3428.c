@@ -3,7 +3,7 @@
  * mcp3428.c
  *
  *  Created on: 2023.04.01.
- *      Author: jaehong park (jaehong1972@gmail.com)
+ *      Author: jaehong park (smilemacho@gmail.com)
  */
 
 #include PLATFORM_HEADER
