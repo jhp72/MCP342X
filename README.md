@@ -1,6 +1,6 @@
-# MCP342X
-mcp342x driver based on efr32mg13p, sliconlabs' chiset and gecko sdk's i2c api.
+# MCP342X ADC Driver
 
+MCP342X driver based on efr32mg13p of silicon labs' chipset and gecko sdk's i2c api.
 
 <English>
 I rely on a lot of open source help in my work.
@@ -18,91 +18,154 @@ I hope it helps those who need it.
 
 필요한 분들에게 많은 도움이 되길 바랍니다.
 
-## Project Structure and File Descriptions
+## Project Overview
+This repository provides a C language driver for the Microchip MCP342X series of analog-to-digital converters (ADCs). It aims to offer a robust and easy-to-use interface for integrating these ADCs into embedded systems, particularly those communicating via I2C.
 
-This project, `MCP342X`, provides a driver for the MCP342X series of Analog-to-Digital Converters (ADCs), specifically tailored for use with Silicon Labs' EFR32MG13P chipset and leveraging the Gecko SDK's I2C API.
+## Features
+-   Support for various MCP342X series ADCs (e.g., MCP3421, MCP3422, MCP3423, MCP3424, MCP3426, MCP3427, MCP3428).
+-   Configurable resolution and gain settings.
+-   Single-shot and continuous conversion modes.
+-   I2C communication interface.
+-   Error handling for I2C transactions.
 
-Here's a detailed breakdown of the files and directories within this repository:
+## Driver Details
+This driver is implemented in C and designed for embedded systems. It provides functions to initialize the ADC, configure its operating parameters, and read conversion results.
 
-### Files:
+## I2C Address
+The MCP342X series ADCs typically have configurable I2C addresses. The base address for the MCP342X series is generally `0x68` (binary `1101000`). The last three bits (A2, A1, A0) are configurable via external pins, allowing for up to 8 different addresses.
 
-*   **`mcp3428.c`**:
-    This is the primary C source file containing the implementation of the MCP342X ADC driver. It includes functions for initializing the ADC, configuring its operating parameters (e.g., resolution, gain, conversion mode), and reading conversion results. This file directly interacts with the I2C bus to communicate with the MCP342X device. It is designed to be integrated into embedded systems projects using the EFR32MG13P microcontroller.
+**Default I2C Address (MCP3428):**
+The MCP3428, for example, has a base address of `0x68` and its address can be modified by the A0, A1, A2 pins.
+The full I2C address will be `0b1101000` + A2A1A0.
 
-*   **`mcp3428.h`**:
-    This is the header file corresponding to `mcp3428.c`. It declares the data structures, function prototypes, and macros necessary for interfacing with the MCP342X driver. Any other C file that needs to use the MCP342X driver functions will include this header file. It defines the public API of the driver.
+## Registers
+The MCP342X ADCs are configured and read via a single configuration register and data registers.
 
-*   **`README.md`**:
-    This file provides a general overview of the `MCP342X` project, including its purpose, a brief description of the driver, and information about its open-source nature. It also contains instructions or general guidance for users. This file is written in Markdown format for easy readability on platforms like GitHub.
+### Configuration Register (8-bit)
+| Bit 7 | Bit 6 | Bit 5 | Bit 4 | Bit 3 | Bit 2 | Bit 1 | Bit 0 |
+|-------|-------|-------|-------|-------|-------|-------|-------|
+| O/C   | C1    | C0    | S1    | S0    | G1    | G0    | RDY   |
 
-*   **`LICENSE`**:
-    This file contains the MIT License under which this project is distributed. It specifies the terms and conditions for using, copying, modifying, and distributing the software. It ensures that the software remains open source while protecting the rights of the copyright holder. The copyright is held by Jaehong Park <smilemacho@gmail.com>.
+-   **O/C (Output/Conversion Mode):**
+    -   `0`: One-shot conversion mode
+    -   `1`: Continuous conversion mode
+-   **C1, C0 (Channel Selection):**
+    -   `00`: Channel 1
+    -   `01`: Channel 2
+    -   `10`: Channel 3
+    -   `11`: Channel 4 (MCP3426/7/8 only)
+-   **S1, S0 (Sample Rate / Resolution):**
+    -   `00`: 12-bit (240 SPS)
+    -   `01`: 14-bit (60 SPS)
+    -   `10`: 16-bit (15 SPS)
+    -   `11`: 18-bit (3.75 SPS)
+-   **G1, G0 (PGA Gain):**
+    -   `00`: 1x
+    -   `01`: 2x
+    -   `10`: 4x
+    -   `11`: 8x
+-   **RDY (Ready Bit):**
+    -   `0`: Data is ready
+    -   `1`: New conversion in progress
 
-### Directories:
+### Data Registers
+The conversion result is typically read as a 16-bit or 18-bit signed integer, depending on the configured resolution. The data is usually transmitted in two or three bytes (MSB first).
 
-*   **`.git/`**:
-    This directory is a hidden folder created and managed by Git, the version control system. It contains all the necessary information for the local Git repository, including commit history, remote repository addresses, branches, and configuration settings. It allows developers to track changes, revert to previous versions, and collaborate on the project. You typically do not need to interact with this directory directly.
+## Configuration Options (Enums)
+The driver provides enums for easy configuration of the ADC. These typically include:
 
-## Key Functions and Their Descriptions
+```c
+// Example (actual names may vary)
+typedef enum {
+    MCP342X_CHANNEL_1 = 0x00,
+    MCP342X_CHANNEL_2 = 0x20,
+    MCP342X_CHANNEL_3 = 0x40,
+    MCP342X_CHANNEL_4 = 0x60
+} mcp342x_channel_t;
 
-This section details the main functions provided by the `mcp3428` driver, outlining their purpose and functionality.
+typedef enum {
+    MCP342X_MODE_ONESHOT = 0x00,
+    MCP342X_MODE_CONTINUOUS = 0x10
+} mcp342x_mode_t;
 
-### Functions in `mcp3428.h` (Public API):
+typedef enum {
+    MCP342X_RESOLUTION_12BIT = 0x00,
+    MCP342X_RESOLUTION_14BIT = 0x04,
+    MCP342X_RESOLUTION_16BIT = 0x08,
+    MCP342X_RESOLUTION_18BIT = 0x0C
+} mcp342x_resolution_t;
 
-*   **`void mcp3428_init(void)`**:
-    Initializes the MCP3428 driver and the underlying I2C communication. This function should be called once at system startup to prepare the ADC for operation. It also configures the initial settings for the ADC channels.
+typedef enum {
+    MCP342X_GAIN_1X = 0x00,
+    MCP342X_GAIN_2X = 0x01,
+    MCP342X_GAIN_4X = 0x02,
+    MCP342X_GAIN_8X = 0x03
+} mcp342x_gain_t;
+```
 
-*   **`void mcp3428_process(void)`**:
-    Handles the continuous processing and reading of ADC values from the configured channels. This function is typically called periodically within a main loop or a task scheduler to acquire new ADC data.
+## Key Functions
+The driver typically exposes the following functions:
 
-*   **`void cli_dev_mcp3428_rst(void)`**:
-    A utility function, likely intended for command-line interface (CLI) usage, to reset the MCP3428 device. This can be useful for reinitializing the ADC during debugging or specific operational scenarios.
+-   `mcp342x_init(i2c_address)`: Initializes the ADC with a given I2C address.
+-   `mcp342x_configure(channel, mode, resolution, gain)`: Configures the ADC's operating parameters.
+-   `mcp342x_read_raw_data(channel, &raw_value)`: Reads the raw ADC conversion result.
+-   `mcp342x_convert_to_voltage(raw_value, gain, &voltage)`: Converts raw ADC data to voltage.
+-   `mcp342x_start_conversion()`: Starts a new conversion in one-shot mode.
 
-### Functions in `mcp3428.c` (Internal/Helper Functions):
+## Dependencies
+-   An I2C communication library for your specific microcontroller/platform.
+-   Standard C libraries (e.g., `stdint.h`).
 
-These functions are part of the driver's internal implementation and are typically not called directly by external modules, but they are crucial for the driver's operation.
+## Usage Example
+```c
+#include "mcp3428.h"
+#include <stdio.h> // For printf, replace with your logging mechanism
 
-*   **`void MCP342X_i2cInit(void)`**:
-    Initializes the I2C communication interface used to communicate with the MCP342X ADC. This sets up the I2C peripheral with the necessary clock frequency and other parameters.
+// Assume an I2C communication interface is already set up and available
+// e.g., i2c_write(address, data, len), i2c_read(address, buffer, len)
 
-*   **`bool MCP342X_init(void)`**:
-    Performs the initial setup of the MCP342X device. This includes setting default configurations for the ADC channels (e.g., continuous mode, 12-bit resolution) and verifying I2C communication with the device.
+int main() {
+    uint8_t i2c_address = 0x68; // Example I2C address for MCP3428 with A2A1A0 = 000
+    int32_t raw_adc_value;
+    float voltage;
 
-*   **`bool MCP342X_config(uint8_t channel, Resolution res, Conversion mode, PGA gain)`**:
-    Configures a specific channel of the MCP342X ADC. Parameters allow setting the input `channel`, `resolution` (e.g., 12-bit, 14-bit), `conversion mode` (one-shot or continuous), and `Programmable Gain Amplifier (PGA)` gain (e.g., 1x, 2x, 4x, 8x).
+    // Initialize the ADC
+    if (mcp342x_init(i2c_address) != 0) {
+        printf("Failed to initialize MCP342X\n");
+        return 1;
+    }
 
-*   **`bool MCP342X_newConversion(uint8_t channel)`**:
-    Initiates a new analog-to-digital conversion on the specified `channel`. This is particularly relevant when the ADC is configured in one-shot conversion mode.
+    // Configure the ADC for Channel 1, One-shot mode, 16-bit resolution, 1x gain
+    if (mcp342x_configure(MCP342X_CHANNEL_1, MCP342X_MODE_ONESHOT, MCP342X_RESOLUTION_16BIT, MCP342X_GAIN_1X) != 0) {
+        printf("Failed to configure MCP342X\n");
+        return 1;
+    }
 
-*   **`int8_t MCP342X_isConversionFinished(uint8_t channel)`**:
-    Checks the status of the ADC conversion for a given `channel`. It returns 1 if the conversion is complete and the data is ready, 0 if not ready, and -1 in case of an error.
+    // Start a conversion (only needed for one-shot mode)
+    // In continuous mode, conversions happen automatically
+    mcp342x_start_conversion();
 
-*   **`int32_t MCP342X_getResult(uint8_t channel)`**:
-    Retrieves the raw digital result of the ADC conversion for the specified `channel`. The result is returned as a 32-bit integer, with its interpretation depending on the configured resolution.
+    // Wait for conversion to complete (implement your own delay or polling)
+    // For example, poll the RDY bit or wait for a fixed time based on resolution
 
-*   **`int32_t MCP342X_read(uint8_t channel)`**:
-    Performs a complete read operation for a specified `channel`. If the ADC is in one-shot mode, it initiates a new conversion, waits for it to complete, and then retrieves the raw digital result.
+    // Read the raw ADC value
+    if (mcp342x_read_raw_data(MCP342X_CHANNEL_1, &raw_adc_value) != 0) {
+        printf("Failed to read raw ADC data\n");
+        return 1;
+    }
 
-*   **`int32_t MCP342X_readVoltage(uint8_t channel)`**:
-    Reads the ADC value from the specified `channel` and converts it into a voltage reading (in microvolts). This function takes into account the configured resolution and PGA gain to provide an accurate voltage representation.
+    // Convert raw value to voltage
+    if (mcp342x_convert_to_voltage(raw_adc_value, MCP342X_GAIN_1X, &voltage) != 0) {
+        printf("Failed to convert to voltage\n");
+        return 1;
+    }
 
-*   **`float MCP342X_getStepSize(uint8_t channel)`**:
-    Calculates and returns the step size (Least Significant Bit, LSB value) for the given `channel` based on its current configuration (resolution and gain). This value represents the voltage equivalent of one digital count.
+    printf("Raw ADC Value: %ld\n", raw_adc_value);
+    printf("Voltage: %.4f V\n", voltage);
 
-*   **`int32_t MCP3428Thermal_voltageToTemp(int32_t voltage)`**:
-    A specialized function that converts a given voltage reading (in mV) into a temperature in Celsius. This is likely used in conjunction with a specific thermal sensor (e.g., TMP36) whose output voltage is proportional to temperature.
+    return 0;
+}
+```
 
-*   **`uint32_t MCP342x_Resolution_getConversionDelayTime(uint8_t resolution)`**:
-    Provides the typical conversion delay time in microseconds for a given ADC `resolution`. This can be used to implement appropriate delays when waiting for conversions to complete.
-
-*   **`bool I2C_generalCallReset(void)`**:
-    Sends an I2C General Call Reset command (0x06) to all devices on the I2C bus. This can be used to reset the state of all I2C slave devices.
-
-*   **`bool I2C_generalCallLatch(void)`**:
-    Sends an I2C General Call Latch command (0x04). The specific effect of this command depends on the I2C slave devices.
-
-*   **`bool I2C_generalCallConvert(void)`**:
-    Sends an I2C General Call Convert command (0x08) to all devices on the I2C bus. This can be used to initiate a conversion on all connected ADCs simultaneously.
-
-*   **`void mcp342x_i2c_init(void)`**:
-    An internal helper function that performs the low-level initialization of the I2C peripheral. It is called by `MCP342X_i2cInit`.
+## License
+This project is licensed under the MIT License - see the `LICENSE` file for details.
